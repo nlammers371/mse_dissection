@@ -217,7 +217,7 @@ for i = 1:length(cp_filenames)
             s_cells(e_pass).setID = setID;          
             s_cells(e_pass).source_path = fn;  
             s_cells(e_pass).genotype = gtype;
-            s_cells(e_pass).gtypeID = gtypeID;
+            s_cells(e_pass).gtypeID = repelem(gtypeID,numel(s_cells(e_pass).xPos));;
             s_cells(e_pass).PixelSize = FrameInfo(1).PixelSize;       
             s_cells(e_pass).ap_flag = ap_flag;
             % add protein info      
