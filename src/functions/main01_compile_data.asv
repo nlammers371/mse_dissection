@@ -174,11 +174,9 @@ for i = 1:length(cp_filenames)
     gtype_ind = strfind(fn,'MSE-');
     underscores = strfind(fn(gtype_ind:end),'_') + gtype_ind;
     gtype = fn(gtype_ind+4:underscores(1)-2);
-    gtypeID = find(ismember(genotype_cell,gtype));
+    gtypeID = find(ismember({'wt','bcd','gt'},gtype));
     if isempty(gtypeID)
-        genotype_cell = [genotype_cell{:} {gtype}];
-        gtypeID = numel(genotype_cell);
-    end
+        gty
     % compile schnitz info
     s_cells = struct;
     e_pass = 1;    
@@ -216,8 +214,7 @@ for i = 1:length(cp_filenames)
             s_cells(e_pass).time = time_clean(ismember(frames_clean,nc_frames));                        
             s_cells(e_pass).setID = setID;          
             s_cells(e_pass).source_path = fn;  
-            s_cells(e_pass).genotype = gtype;
-            s_cells(e_pass).gtypeID = gtypeID;
+            s_cells(e_pass).genotype = gtype; 
             s_cells(e_pass).PixelSize = FrameInfo(1).PixelSize;       
             s_cells(e_pass).ap_flag = ap_flag;
             % add protein info      
