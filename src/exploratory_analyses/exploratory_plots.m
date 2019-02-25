@@ -1,3 +1,4 @@
+%run from inside the exploratory_analyses folder
 clear
 close all
 % specify project
@@ -7,7 +8,7 @@ currentFolder = pwd;
 slashes = strfind(currentFolder,'\');
 fName = currentFolder(slashes(end)+1:end);
 % make a folder of same name in "fig" directory to hold any figures we make
-figPath = ['../../fig/' fName '/']; % "../" tells code to fgo up one level
+figPath = ['../../fig/' project '/' fName '/']; % "../" tells code to fgo up one level
 mkdir(figPath);
 % specify path to data
 dataPath = ['../../dat/' project '/'];
@@ -19,6 +20,8 @@ load([dataPath 'nucleus_struct.mat'])
 % across nuclei into one, long vector. This format is often easier to work
 % with
 fluo_vec = [nucleus_struct.fluo]; % spot intensity
+fluo_vec_zeros = fluo_vec;
+fluo_vec_zeros(isnan(fluo_vec_zeros)) = 0;
 ap_vec = [nucleus_struct.ap_vector]*100; % AP position 
 time_vec = [nucleus_struct.time]; % time
 gtype_vec = [nucleus_struct.gtypeID]; % indicates genotype
@@ -71,21 +74,37 @@ for g = 1:numel(genotype_id_index)
         apFilter = round(ap_vec)==AP; % same idea: any entry that matches will have a 1
         % now filter for relevant spot intensities using filters
         fluo = fluo_vec(gFilter&apFilter);
+        fluo_zeros = fluo_vec_zeros(gFilter&apFilter);
         % record in array
         gtype_ap_fluo_array(a,g) = nanmean(fluo);
+        gtype_ap_fluo_zeros_array(a,g) = mean(fluo_zeros);
     end
 end
 
-% make a figure
+% make a figure for the average spot intensity (no zeros)
 mean_fluo_fig = figure;
 plot(ap_ref_vec,gtype_ap_fluo_array)
 % make labels
-xlabel('AP position (5 embryo length')
+xlabel('AP position (% embryo length)')
 ylabel('spot intensity (au)')
-title('Spatial intensity profiles by genotype')
+title('Spatial spot intensity profiles by genotype')
 % make a legend
 legend(genotype_str_index{:})
 % add grid lines
 grid on
 % save
-saveas(mean_fluo_fig,[figPath 'mean_fluo_fig.png'])
+saveas(mean_fluo_fig,[figPath 'mean_spot_fluo_fig.png'])
+
+% make a figure for average nuclear intensity (with zeros)
+mean_zeros_fluo_fig = figure;
+plot(ap_ref_vec,gtype_ap_fluo_zeros_array)
+% make labels
+xlabel('AP position (% embryo length)')
+ylabel('Nulcear intensity (au)')
+title('Spatial Nuclear intensity profiles by genotype')
+% make a legend
+legend(genotype_str_index{:})
+% add grid lines
+grid on
+% save
+saveas(mean_zeros_fluo_fig,[figPath 'mean_nuc_fluo_fig.png'])

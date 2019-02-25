@@ -1,3 +1,4 @@
+% Run from insde the src folder 
 % main01_compile_data(project, FolderPath, keyword, include_vec)
 %
 % DESCRIPTION
@@ -8,7 +9,7 @@
 % ARGUMENTS
 % project: master ID variable 
 %
-% folderPath: Full or relative path to DynamicsResults folder (pr
+% folderPath: Full or relative path to DynamicsResults folder (or
 %               equivalent)
 %
 % keyword: String contained in all folder names for projects one wishes to 
@@ -117,7 +118,7 @@ for i = 1:length(cp_filenames)
             load([folderPath pa_filenames{i}]); % Raw Particles
         end
         processed_data = load([folderPath cp_filenames{i}]); % processed particles 
-    catch
+    catch   
         continue
     end
     ap_flag = 1;
