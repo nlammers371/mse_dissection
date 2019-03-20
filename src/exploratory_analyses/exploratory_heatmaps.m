@@ -2,7 +2,7 @@
 %Run from inside the exploratory_analyses folder
 clear
 close all
-project = 'mse_comparison_mcp4f';
+project = 'mse_comparison_mcp2f';
 currentFolder = pwd;
 %find file name and make another file of the same name in the data folder
 %to hold our figures
@@ -55,7 +55,7 @@ for g = 1:numel(genotype_id_index)
     end
     %make both figures for each genotype
     %first the average spot intensity
-    spot_heatmap_fig = figure
+    spot_heatmap_fig = figure;
     imagesc(spot_heatmap_array)
     colorbar
     caxis([0,20e+5]); %make all the colorbars the same
@@ -66,7 +66,7 @@ for g = 1:numel(genotype_id_index)
     title([gName, ' Spatial Temporal Spot Intensity Profile'])
     saveas (spot_heatmap_fig,[figPath, gName, '_spot_heatmap_fig.png']);
     %then the average intensity across all nuclei
-    nuc_heatmap_fig = figure
+    nuc_heatmap_fig = figure;
     imagesc(nuc_heatmap_array)
     colorbar
     caxis([0,6e+5])

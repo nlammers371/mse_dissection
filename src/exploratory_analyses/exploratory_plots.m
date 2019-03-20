@@ -2,13 +2,13 @@
 clear
 close all
 % specify project
-project = 'mse_comparison_mcp4f';
+project = 'mse_comparison_mcp2f';
 % this finds name of current directory
 currentFolder = pwd;
 slashes = strfind(currentFolder,'\');
 fName = currentFolder(slashes(end)+1:end);
 % make a folder of same name in "fig" directory to hold any figures we make
-figPath = ['../../fig/' project '/' fName '/']; % "../" tells code to fgo up one level
+figPath = ['../../fig/' project '/' fName '/']; % "../" tells code to go up one level
 mkdir(figPath);
 % specify path to data
 dataPath = ['../../dat/' project '/'];

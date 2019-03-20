@@ -3,7 +3,7 @@
 %Run from inside the exploratory_analyses folder
 clear
 close all
-project = 'mse_comparison_mcp4f';
+project = 'mse_comparison_mcp2f';
 currentFolder = pwd;
 %find file name and make another file of the same name in the data folder
 %to hold our figures
@@ -20,17 +20,18 @@ genotype_id_index = unique(gtype_vec,'stable');
 genotype_str_index = unique({nucleus_struct.genotype}, 'stable');
 %stable keeps things in the same order as they originally appeared so that
 %the index numbers match up with the string identifiers
-
+%%
 %now we need to make a structure to hold all the parameters we are going to
 %extract for each individual nucleus
 on_time_struct = struct('onTime',{},'apPosition',{},'setID',{},'gtypeID',{});
 for n = 1:numel(nucleus_struct)
     fluo = nucleus_struct(n).fluo; %pulls out all the fluorescence values for the particular nucleus
     time = nucleus_struct(n).time; %same for time
-    first_on = find(~isnan(fluo),1); %find the first entry that actually records a spot
-    if ~isempty(first_on)
+    filterParameter = ~isnan(fluo); %create a vector containing only the times when there is a spot
+    if sum(filterParameter) >= 10
+        first_on = find(~isnan(fluo),1); %find the first entry that actually records a spot
         on_time = time(first_on)/60;%convert to minutes
-    else %if there are no spots recorded for the nucleus
+    else %if the number of spots recorded for the nucleus is less than 10
         on_time = NaN;
     end
     on_time_struct(n).onTime = on_time;
@@ -54,7 +55,7 @@ for g = 1:numel(genotype_id_index)
     title([gName, ' Nuclear On-Times Across AP']);
     xlabel('AP position (% embryo length)');
     ylabel('Nuclear On-Time (min)');
-    %saveas(ap_ontime_set_plot,[figPath gName '_ap_ontime_plot_set.png'])
+    saveas(ap_ontime_set_plot,[figPath gName '_filtered_ap_ontime_plot_set.png'])
     %make a scatter plot of the overall trends (not color-coded_
     ap_ontime_plot = figure;
     scatter([on_time_struct(gFilter).apPosition],[on_time_struct(gFilter).onTime], 'filled');
@@ -63,5 +64,5 @@ for g = 1:numel(genotype_id_index)
     title([gName, ' Nuclear On Times Across AP']);
     xlabel('AP position (% embryo length)');
     ylabel('Nuclear On-Time (min)');
-    %saveas(ap_ontime_plot,[figPath gName '_ap_ontime_plot.png'])
+    saveas(ap_ontime_plot,[figPath gName '_filtered_ap_ontime_plot.png'])
 end    
