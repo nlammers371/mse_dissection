@@ -1,6 +1,15 @@
 clear
-dataPath = '/Users/annikamartin/Documents/Research/Rotation3/Exploratory_Images/dat/mse_comparison_mcp2f/';
-figPath = '/Users/annikamartin/Documents/Research/Rotation3/Exploratory_Images/fig/mse_comparison_mcp2f/';
+close all
+project = 'mse_comparison_lateralML';
+currentFolder = pwd;
+%find file name and make another file of the same name in the data folder
+%to hold our figures
+slashes = strfind(currentFolder,'\');
+fName = currentFolder(slashes(end)+1:end);
+figPath = ['../../fig/' project '/' fName '/Variance/'];
+mkdir(figPath);
+%specify where the data is coming from and load the data
+dataPath = ['../../dat/' project '/'];
 load([dataPath 'qc_nucleus_struct.mat']);
 
 %apply quality control filtering
@@ -48,7 +57,7 @@ for g = 1:numel(gIndex) %iterate over genotypes
         eVarFluo(i) = nanstd(eFluo(i,:))/nanmean(eFluo(i,:));
     end
     etrace_variance_fig = figure;
-    scatter(AP, eVarFluo,'FaceAlpha',.2)
+    scatter(AP, eVarFluo)%,'FaceAlpha',.2)
     xlabel('AP position (%embryo length)')
     ylabel('Fluorescence Variance (standard deviation/mean)')
     title ([gIndex{g} ' Early Trace Variance of Active Nuclei (0 to 20 min)'])
