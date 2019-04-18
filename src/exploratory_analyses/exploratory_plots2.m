@@ -1,7 +1,7 @@
 %Run from inside the exploratory_analyses folder
 clear
 close all
-project = 'mse_comparison_mcp2f';
+project = 'mse_comparison_lateralML';
 currentFolder = pwd;
 %find file name and make another file of the same name in the data folder
 %to hold our figures

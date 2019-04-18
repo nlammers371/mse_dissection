@@ -3,7 +3,7 @@
 %run from inside the exploratory analyses folder
 clear 
 close all
-project = 'mse_comparison_mcp2f';
+project = 'mse_comparison_lateralML';
 currentFolder = pwd;
 %specify folders for the data and for the figures we make
 slashes = strfind(currentFolder,'\');

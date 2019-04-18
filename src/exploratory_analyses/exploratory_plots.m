@@ -2,7 +2,7 @@
 clear
 close all
 % specify project
-project = 'mse_comparison_mcp2f';
+project = 'mse_comparison_lateralML';
 % this finds name of current directory
 currentFolder = pwd;
 slashes = strfind(currentFolder,'\');

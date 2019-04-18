@@ -1,6 +1,17 @@
+%run inside the exploratory analyses folder
+
 clear
-dataPath = '/Users/annikamartin/Documents/Research/Rotation3/Exploratory_Images/dat/mse_comparison_mcp2f/';
-figPath = '/Users/annikamartin/Documents/Research/Rotation3/Exploratory_Images/fig/mse_comparison_mcp2f/';
+close all
+project = 'mse_comparison_lateralML';
+currentFolder = pwd;
+%find file name and make another file of the same name in the data folder
+%to hold our figures
+slashes = strfind(currentFolder,'\');
+fName = currentFolder(slashes(end)+1:end);
+figPath = ['../../fig/' project '/' fName '/QCHeatmaps/'];
+mkdir(figPath);
+%specify where the data is coming from and load the data
+dataPath = ['../../dat/' project '/'];
 load([dataPath 'qc_nucleus_struct.mat']);
 
 %reference vectors
@@ -8,73 +19,67 @@ timeRef = 1:60;
 apRef = 1:100;
 
 %apply quality control filtering
-qcFilter = [nucleus_struct.qc] == 1;
+qcFilter = [nucleus_struct.nc_qc_flag] == 1;
 qc_nucleus_struct = nucleus_struct(qcFilter);
 
-%create reference arrays
+%create reference arrays for fluorescence heatmaps
+gID_index = unique([qc_nucleus_struct.gtypeID],'stable');
+gType_index = unique({qc_nucleus_struct.genotype}, 'stable');
+timeVec = nan(1,numel([qc_nucleus_struct.time_interp]));
+apVec = nan(1,numel([qc_nucleus_struct.ap_vector_interp]));
+fluoVec = nan(1,numel([qc_nucleus_struct.fluo_interp]));
+gIDVec = nan(1,numel([qc_nucleus_struct.time_interp]));
 
+%create reference arrays for fractional activity
+fonVec = nan(1,numel(qc_nucleus_struct));
+foffVec = nan(1,numel(qc_nucleus_struct));
+fmeanAPVec = nan(1,numel(qc_nucleus_struct));
+fgIDVec = nan(1,numel(qc_nucleus_struct));
+
+first = 1;
 for n = 1:numel(qc_nucleus_struct)
-    timeVec(n,:) = qc_nucleus_struct(n).time_interp; %structure format (nucleus:time steps)
-    apVec(n,:) = (qc_nucleus_struct(n).ap_vector_interp)*100;
-    fluoVec(n,:) = qc_nucleus_struct(n).fluo_interp;
-    gtypeVec(n,1:181) = {qc_nucleus_struct(n).genotype};
-    onVec(n,1:181) = timeVec(n,find(~isnan([qc_nucleus_struct(n).fluo_interp]),1));
-    offVec(n,1:181) = timeVec(n,find(~isnan([qc_nucleus_struct(n).fluo_interp]),1, 'last'));
+    last = first+numel(qc_nucleus_struct(n).time_interp)-1;
+    timeVec(first:last) = (qc_nucleus_struct(n).time_interp)/60; %want in terms of minutes
+    apVec(first:last) = (qc_nucleus_struct(n).ap_vector_interp)*100;
+    fluoVec(first:last) = qc_nucleus_struct(n).fluo_interp;
+    gIDVec(first:last) = qc_nucleus_struct(n).gtypeID_interp;
+    qcVec(first:last) = qc_nucleus_struct(n).qc;
+    if qc_nucleus_struct(n).nc_trace_on_flag && qc_nucleus_struct(n).nc_trace_off_flag
+       fonVec(n) = timeVec(find(~isnan([qc_nucleus_struct(n).fluo_interp]),1));
+       foffVec(n) = timeVec(find(~isnan([qc_nucleus_struct(n).fluo_interp]),1, 'last')); 
+    end
+    fmeanAPVec(n) = qc_nucleus_struct(n).apMean*100;
+    fgIDVec(n) = mean(qc_nucleus_struct(n).gtypeID);
+    first = last+1;
 end
 
 %create genotype filters
-wtFilter = strcmp(gtypeVec, 'Wt');
-hbFilter = strcmp(gtypeVec, 'Hb');
-gtFilter = strcmp(gtypeVec, 'Gt');
+
+wtFilter = gIDVec == gID_index(find(strcmpi(gType_index, 'Wt')));
+hbFilter = gIDVec == gID_index(find(strcmpi(gType_index, 'Hb')));
+gtFilter = gIDVec == gID_index(find(strcmpi(gType_index, 'Gt')));
+
+fwtFilter = fgIDVec == gID_index(find(strcmpi(gType_index, 'Wt')));
+fhbFilter = fgIDVec == gID_index(find(strcmpi(gType_index, 'Hb')));
+fgtFilter = fgIDVec == gID_index(find(strcmpi(gType_index, 'Gt')));
+
 
 %create arrays
-wtspot_array = NaN(numel(timeRef),numel(apRef)); %average fluorescence of active nuclei
-wtnuc_array = NaN(numel(timeRef),numel(apRef)); %average fluorescence of all nuclei
-wtfract_array = NaN(numel(timeRef),numel(apRef)); %fraction of traces that start before time t and end after time t
-hbspot_array = NaN(numel(timeRef),numel(apRef));
-hbnuc_array = NaN(numel(timeRef),numel(apRef));
-hbfract_array = NaN(numel(timeRef),numel(apRef));
-gtspot_array = NaN(numel(timeRef),numel(apRef));
-gtnuc_array = NaN(numel(timeRef),numel(apRef));
-gtfract_array = NaN(numel(timeRef),numel(apRef));
+%%
+wtspot_array = fill_array(timeRef, apRef, wtFilter, apVec, fluoVec, 'spot', timeVec); %average fluorescence of active nuclei
+wtnuc_array = fill_array(timeRef, apRef, wtFilter, apVec, fluoVec, 'nuc', timeVec); %average fluorescence of all nuclei
+%%
+wtfract_array = fill_array(timeRef, apRef, fwtFilter, fmeanAPVec, fluoVec, 'fract', fonVec, foffVec); %fraction of traces that start before time t and end after time t
+%%
+hbspot_array = fill_array(timeRef, apRef, hbFilter, apVec, fluoVec, 'spot', timeVec);
+hbnuc_array = fill_array(timeRef, apRef, hbFilter, apVec, fluoVec, 'nuc', timeVec);
+hbfract_array = fill_array(timeRef, apRef, fhbFilter, fmeanAPVec, fluoVec, 'fract', fonVec, foffVec);
+gtspot_array = fill_array(timeRef, apRef, gtFilter, apVec, fluoVec, 'spot', timeVec);
+gtnuc_array = fill_array(timeRef, apRef, gtFilter, apVec, fluoVec, 'nuc', timeVec);
+%%
+gtfract_array = fill_array(timeRef, apRef, fgtFilter, fmeanAPVec, fluoVec, 'fract', fonVec, foffVec);
 
-%fill arrays
-for a = 1:numel(apRef)
-    AP = apRef(a);
-    apFilter = round(apVec(:,:))==AP;
-    for t = 1:numel(timeRef)
-        time = timeRef(t)*60;
-        tFilter = timeVec(:,:)==time;
-        wtFluo = fluoVec(wtFilter&apFilter&tFilter);
-        wtspot_array(t,a) = nanmean(wtFluo);
-        hbFluo = fluoVec(hbFilter&apFilter&tFilter);
-        hbspot_array(t,a) = nanmean(hbFluo);
-        gtFluo = fluoVec(gtFilter&apFilter&tFilter);
-        gtspot_array(t,a) = nanmean(gtFluo);
-        
-        wtFluo(isnan(wtFluo))=0;
-        wtnuc_array(t,a) = mean(wtFluo);
-        hbFluo(isnan(hbFluo))=0;
-        hbnuc_array(t,a) = mean(hbFluo);
-        gtFluo(isnan(gtFluo))=0;
-        gtnuc_array(t,a) = mean(gtFluo);
-        
-        onFilter = onVec(:,:)<time;
-        offFilter = offVec(:,:)>time;
-        wtnucOn = numel(fluoVec(wtFilter&onFilter&offFilter&apFilter&tFilter));
-        wtnucTot = numel(wtFluo);
-        wtfract_array(t,a) = wtnucOn/wtnucTot;
-        hbnucOn = numel(fluoVec(hbFilter&onFilter&offFilter&apFilter&tFilter));
-        hbnucTot = numel(hbFluo);
-        hbfract_array(t,a) = hbnucOn/hbnucTot;
-        gtnucOn = numel(fluoVec(gtFilter&onFilter&offFilter&apFilter&tFilter));
-        gtnucTot = numel(gtFluo);
-        gtfract_array(t,a) = gtnucOn/gtnucTot;
-        
-    end
-    
-end
-
+%%
 %Create individual genotype heatmaps 
 spot_heatmap(wtspot_array, 'Wt', figPath)
 spot_heatmap(hbspot_array, 'Hb', figPath)
@@ -99,44 +104,88 @@ matrix_diff(wtfract_array, gtfract_array, 'Wt-Gt', figPath, 'fract');
 
 close all
 
+function filled_array = fill_array(timeRef, apRef, gFilter, apVec, fluoVec, varargin)
+heatmap_array = NaN(numel(timeRef),numel(apRef));
+spot = false;
+nuc = false;
+fraction = false;
+timeVec = [];
+onVec = [];
+offVec = [];
+
+for i = 1:length(varargin)
+    if strcmpi(varargin{i},'spot')
+        spot = true;
+        timeVec = varargin{i+1};
+    elseif strcmpi(varargin{i}, 'nuc')
+        nuc = true;
+        timeVec = varargin{i+1};
+    elseif strcmpi(varargin{i}, 'fract')
+        fraction = true;
+        onVec = varargin{i+1};
+        offVec = varargin{i+2};
+    end
+end
+for a = 1:numel(apRef)
+    AP = apRef(a);
+    apFilter = round(apVec)==AP;
+    for t = 1:numel(timeRef)
+        time = timeRef(t);
+        if fraction
+            OnFilter = onVec < time;
+            OffFilter = offVec > time;
+            fractOn = sum(gFilter&OnFilter&OffFilter&apFilter)/sum(gFilter&apFilter);
+            heatmap_array(t,a) = fractOn;
+        elseif nuc
+            tFilter = round(timeVec) == time;
+            fluo = fluoVec(gFilter&apFilter&tFilter);
+            fluo(isnan(fluo)) = 0;
+            heatmap_array(t,a) = mean(fluo);
+        elseif spot
+            tFilter = round(timeVec) == time;
+            fluo = fluoVec(gFilter&apFilter&tFilter);
+            heatmap_array(t,a) = nanmean(fluo);
+        end
+    end 
+end
+filled_array = heatmap_array;
+end
+
 function spot_heatmap(spot_array,gName,figPath)
 spot_heatmap_fig = figure;
 imagesc(spot_array)
-colorbar
-caxis([0,20e+5]); %make all the colorbars the same
 xlabel('AP position (% embryo length)')
 ylabel('Time (min)')
-c1 = colorbar;
+c1 = colorbar('southoutside');
+caxis([0,18e+5]); %make all the colorbars the same
 c1.Label.String = 'Average Spot Intensity (au)';
 title([gName, ' Spot Intensity Profile'])
-saveas (spot_heatmap_fig,[figPath, gName, '_spot_heatmap_fig.png']);
+saveas (spot_heatmap_fig,[figPath, 'qc_',gName, '_spot_heatmap_fig.png']);
 end
 
 function nuc_heatmap(nuc_array,gName,figPath)
 nuc_heatmap_fig = figure;
 imagesc(nuc_array)
-colorbar
-caxis([0,6e+5])
-%caxis to make all the colorbars the same
 xlabel('AP position (% embryo length)')
 ylabel('Time (min)')
-c2 = colorbar;
+c2 = colorbar('southoutside');
+caxis([0,8e+5])
+%caxis to make all the colorbars the same
 c2.Label.String = 'Average Nuclear Intensity (au)';
 title([gName, '  Nuclear Intensity Profile'])
-saveas (nuc_heatmap_fig,[figPath, gName, '_nuc_heatmap_fig.png']);
+saveas (nuc_heatmap_fig,[figPath, 'qc_',gName, '_nuc_heatmap_fig.png']);
 end
 
 function fract_heatmap(fract_array, gName, figPath)
 fract_heatmap_fig = figure;
 imagesc(fract_array)
-colorbar
-caxis([0,1])
+caxis([0,0.5])
 xlabel('AP position (% embryo length)')
 ylabel('Time (min)')
-c3 = colorbar;
+c3 = colorbar('southoutside');
 c3.Label.String = 'Fraction of Active Nuclei';
 title([gName, ' Fraction of Active Nuclei'])
-saveas (fract_heatmap_fig, [figPath, gName, '_fract_heatmap_fig.png']);
+saveas (fract_heatmap_fig, [figPath, 'qc_', gName, '_fract_heatmap_fig.png']);
 end
 
 %Create Difference Heatmaps
@@ -152,22 +201,21 @@ else
     if strcmpi(varargin, 'spot')
         type = 'Spot Intensity Profile';
         label = 'Average Spot Intensity (au)';
-        fname = [gName '_diff_spot_fig.png'];
+        fname = ['qc_' gName '_diff_spot_fig.png'];
     elseif strcmpi(varargin, 'nuc')
         type = 'Nucleus Intensity Profile';
         label = 'Average Nuclear Intensity (au)';
-        fname = [gName '_diff_nuc_fig.png'];
+        fname = ['qc_' gName '_diff_nuc_fig.png'];
     elseif strcmpi(varargin, 'fract')
         type = 'Fraction of Active Nuclei';
         label = 'Fraction of Active Nuclei';
-        fname = [gName '_diff_fract_fig.png'];
+        fname = ['qc_' gName '_diff_fract_fig.png'];
     end
     diff_heatmap_fig = figure;
     imagesc(diff_array)
-    colorbar
     xlabel('AP position (% embryo length)')
     ylabel('Time (min)')
-    c4 = colorbar;
+    c4 = colorbar('southoutside');
     c4.Label.String = label;
     title([gName,' ', type])
     saveas (diff_heatmap_fig, [figPath, fname]);
