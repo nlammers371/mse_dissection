@@ -1,7 +1,7 @@
 % Goals:
 % Define a data quality flag variable that can be used to select for traces meeting a set of criteria including:
-% minimum of 20 non-missing time steps DONE
-% 75% non-missing observations between first and last time non-missing time
+% minimum of 10 non-missing time steps DONE
+% 50% non-missing observations between first and last time non-missing time
 % point  DONE
 % Create interpolated trace and time variables
 % Interpolate everything to fall on single time grid: interpGrid = 0:20:3600
@@ -10,21 +10,22 @@
 % point are set to 0 DONE
 % Next interpolate to fill in all other missing time points DONE
 
+%run from inside src folder
 clear 
 close all
-project = 'mse_comparison_mcp2f';
+project = 'mse_comparison_lateralML';
 currentFolder = pwd;
-%specify folders for the data and for the figures we make
+%specify folder for the data
 slashes = strfind(currentFolder,'\');
 fName = currentFolder(slashes(end)+1:end);
-dataPath = ['../dat/' project '/'];
+dataPath = ['../../dat/' project '/'];
 %load the data!
 load([dataPath 'nucleus_struct.mat']);
 
 for n = 1:numel(nucleus_struct)
     %filter traces that have the desired number of non-missing time points
-    minWindow = 20;
-    minFill = .75; %fraction of entries between the first and last spot which must be non-missing
+    minWindow = 10;
+    minFill = .50; %fraction of entries between the first and last spot which must be non-missing
     nucleus_struct(n).qc = 0; %creates new quality control variable. Will be set to 1 if the trace meets the requirements
     if sum(~isnan(nucleus_struct(n).fluo)) > 0
         first_on = find(~isnan(nucleus_struct(n).fluo),1); %find the first entry that actually records a spot
@@ -57,7 +58,12 @@ for n = 1:numel(nucleus_struct)
     
     %now to get everything on the same time scale
     interpGrid = 0:20:3600;
-    nucleus_struct(n).time_interp = interpGrid;
+    % NL: changed this so time_interp is of same length as other
+    % interpolated variables
+    nucleus_struct(n).interpGrid = interpGrid;
+    time = nucleus_struct(n).time;
+    time_interp = interpGrid(interpGrid>=time(1)&interpGrid<=time(end));
+    nucleus_struct(n).time_interp = time_interp;
     interp_var_cell = {'xPosParticle', 'yPosParticle','brightestZs','fluo', 'xPos','yPos', 'ap_vector'};
     for i = 1:numel(interp_var_cell)
         varRaw = interp_var_cell{i};

@@ -1,5 +1,5 @@
 % Run from insde the src folder 
-% main01_compile_data(project, FolderPath, keyword, include_vec)
+% main01_compile_data(project, folderPath, keyword, include_vec)
 %
 % DESCRIPTION
 % Funcion to compile relevant outputs from image analysis pipeline across
