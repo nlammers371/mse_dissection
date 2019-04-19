@@ -1,0 +1,115 @@
+% Script to generate TF Profiles
+
+function main03_compile_regression_set(project)
+
+% File Paths
+dataPath = ['../../dat/figure_data/' project '/'];
+InfPath = ['../../out/main_figure5/' project '/'];
+inputOutputPath = ['../../out/input_output/' project '/'];
+% load input/output data
+load([inputOutputPath 'eve2_struct.mat'])
+load([inputOutputPath '/tf_input_struct.mat'])
+% load other trace-related data
+load([InfPath '/viterbi_fits.mat']) % need to update
+load([dataPath '/inference_traces_mHMMeve2_weka_inf_2018_05_07_dT20.mat'])
+load([dataPath '/inference_nuclei_mHMMeve2_weka_inf_2018_05_07_dT20.mat'])
+load([dataPath '/analysis_data_mRNA.mat'])
+
+%%% compile trace-related data first
+viterbi_fit_struct = viterbi_fit_struct([viterbi_fit_struct.skipped]==0);
+v_pt_index = [viterbi_fit_struct.ParticleID];
+nc_pt_index = [nucleus_struct_final.ParticleID];
+InterpGrid = trace_struct_final(1).InterpGrid;
+analysis_indices = sum(nc_act_array_full>0)>=10 & nc14_vec; % only keep nuclei w/ active fluorescence for 10 or more steps
+% correction term to align the live and fixed sets
+ap_shift = eve2_struct.ap_shift;
+% build composite data set
+iter = 1;
+misses = 0;
+for ind = find(analysis_indices)    
+    ncID = nucleus_struct_final(ind).ncID;
+    setID = nucleus_struct_final(ind).setID;
+    set_traces = trace_struct_final([trace_struct_final.setID]==setID);
+    % extract raw activity vectors    
+    full_vec = nc_act_array_full(:,ind); % F when active, 0s when inactive but observed, else NaN
+    mf_vec = nc_act_array_mf(:,ind); % F when active, else NaN
+    bin_vec = nc_act_array_bin(:,ind);
+   
+    nan_filter = ~isnan(full_vec);
+    mf_vec = mf_vec(nan_filter); % remove entries for which nucleus not observed
+    bin_vec = bin_vec(nan_filter);
+    full_vec = full_vec(nan_filter);
+    ncID_vec = repelem(ncID,numel(full_vec));
+    % time and ap vars
+    t_vec = InterpGrid(nan_filter);
+     if t_vec(find(bin_vec>0,1)) > 15*60 % don't take traces that start later than 15 minutes
+        continue
+    end
+    % calculate AP position
+    x_vec = nucleus_struct_final(ind).xPos_interp;
+    y_vec = nucleus_struct_final(ind).yPos_interp;    
+    APAngle = set_traces(1).APAngleOrig;
+    APLength = set_traces(1).APLength;
+    coordAZoom = set_traces(1).coordAZoom;
+    Angle=atan2((y_vec-coordAZoom(2)),(x_vec-coordAZoom(1)));            
+    Distance=sqrt((coordAZoom(2)-y_vec).^2+(coordAZoom(1)-x_vec).^2);
+    APPosition=Distance.*cos(Angle-APAngle);
+    % finally...
+    ap_vec = round(APPosition/APLength*1e3);
+    % apply shift correction (shifting everything to be in fixed "frame") 
+    ap_vec_corrected = ap_vec + ap_shift;
+    ap_vec_rel = nucleus_struct_final(ind).rel_ap_vector_interp;
+    act_vec = ~isnan(mf_vec);
+    %act_vec(isnan(mf_vec)) = 0;
+    % viterbi vectors
+    v_vec = NaN(size(act_vec));
+    z_vec = NaN(size(act_vec));
+    burst_vec = NaN(size(act_vec));
+    dur_vec = NaN(size(act_vec));
+    % check for consistency in vector lengths
+    if numel(full_vec)~=numel(ap_vec)
+        misses = misses + 1;
+        continue
+    end
+    % for those traces with viterbi fits, add to viterbi vectors
+    if ismember(nc_pt_index(ind),v_pt_index)
+        % activity state
+        zv = viterbi_fit_struct(v_pt_index==nc_pt_index(ind)).v_fit.z_viterbi;        
+        if numel(zv) ~= sum(act_vec)
+            warning('mismatch between viterbi and raw trace dimensions')
+            ind_vec = act_vec;
+            t_exp = viterbi_fit_struct(v_pt_index==nc_pt_index(ind)).v_fit.time_exp;
+            vt_ft = ismember(t_exp,t_vec);
+            ex_ft = ismember(t_vec,t_exp);
+            z_vec(ex_ft) = zv(vt_ft);
+        else     
+            z_vec(act_vec) = zv;
+            % correspon ding predicted fluorescence
+            v_vec(act_vec) = viterbi_fit_struct(v_pt_index==nc_pt_index(ind)).v_fit.fluo_viterbi;
+    %         zb = zv>0; % binarize
+    %         z_diff = [diff(zb) 0]; % by definition no transition following last point                                        
+    %         z_diff(zb==0) = NaN;
+    %         burst_vec(act_vec) = abs(z_diff);        
+        end
+    end
+    varList = "[ap_vec' ap_vec_corrected' ap_vec_rel' t_vec' ncID_vec' repelem(setID,numel(ap_vec))' full_vec bin_vec mf_vec  z_vec]";
+                   
+    varNames = {'APOrig','AP', 'APRel', 'Time','ncID','Set', 'Fluo_Full', 'on', 'Fluo_Active', 'Z_Viterbi'};
+    if iter == 1
+        eve2_table = array2table(eval(varList),'VariableNames',varNames);
+    else
+        temp = array2table(eval(varList),'VariableNames',varNames);
+        eve2_table = [eve2_table ; temp];
+    end
+    iter = iter + 1;    
+end
+
+%%% Generate regression flags for convenience
+regression_set = eve2_table;
+regression_set.z_on = regression_set.Z_Viterbi > 1;
+regression_set.z_on_flag = ~isnan(regression_set.Z_Viterbi);
+regression_set.bin_act_flag = ~isnan(regression_set.on);
+% now add flag for fluo active
+regression_set.fluo_act_flag = ~isnan(regression_set.Fluo_Active);
+% save 
+writetable(regression_set,[inputOutputPath 'regression_set.csv'])
